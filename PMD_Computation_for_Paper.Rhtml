@@ -1,0 +1,343 @@
+<html>
+
+<head>
+<title>PMD Computation for TCR_COMPARISON</title>
+</head>
+<body>
+<!--begin.rcode echo=FALSE
+## Function "dataTransformation" By default use 1,2,4 columns as Primary key.
+## Final Matrix can be used in any function of inseqDiv package
+
+dataTransformation<-function(data,ISrange=c(1,2,4),factorRange=c(12,13,14),thr=3,sub,fraction){
+    # Check if the user asked for subsampling
+    # Disabled in this notebbok
+    if (sub==TRUE) {
+      data<-data
+      print(length(data[,3]<3))
+    }
+    # Sort data by (column1,2)
+    sortdata<-data[order(as.numeric(data[,1]),as.numeric(data[,2]),na.last=NA),]
+    mat<-sortdata[,1:3]
+    # substitute the original TCR list with the collapsed
+    sortdata[,1:3]<-as.data.frame(mat)
+    CollapseData<-sortdata
+    # construct names with colums in ISrange
+    IS_vec<-do.call(paste, c(CollapseData[ISrange], sep = "_"))
+    # consruct factor names with colums in factorRange
+    factor_vec<-do.call(paste, c(CollapseData[factorRange], sep = "_"))
+    # Extract the reads count
+    numberOfread_vec<-CollapseData[,3]
+    # construct the datamatrix
+    dataMatrix<-cbind(factor_vec,IS_vec,numberOfread_vec)
+    dataMatrix<-transform(dataMatrix, numberOfread_vec = as.numeric(as.character((numberOfread_vec))))
+    # transform into dataframe (redundant with the operation before?)
+    dataMatrix<-as.data.frame(dataMatrix)
+    # abundance == numberOfread_vec. Refactorize
+    abundance <- as.numeric(dataMatrix[,3])
+    # initiaize a dataframe with as many rows as the total number of reads
+    temp<- data.frame(rep(NA, sum(abundance)))
+    # for each element repeat its name as many time as is his abbundance (each name is a level)
+    for (i in 1:(ncol(dataMatrix)-1)) {
+            temp[,i] <- rep(as.character(dataMatrix[,i]), abundance)
+        }
+    
+    # Construct a contingency table using levels
+    finalMat<- as.data.frame.matrix(table(temp))
+    finalMat<-t(finalMat)
+    return(finalMat)
+}
+
+pmd <-
+function(data,ISrange=c(1,2,4),factorRange=c(12,13,14),thr=3,threshold = 1.1,noNaN=TRUE,chao=FALSE,sub=FALSE,fraction=0.5){
+  
+  # define the arguments
+  pmd <-
+    list(
+      data = data,ISrange = ISrange,factorRange = factorRange,thr = thr,threshold =
+        threshold,noNaN = noNaN
+    ) #build the object
+  # instantiate the class
+  class(pmd) <- "pmd"
+  
+  # Reformat the TCR table into a dataframe that contains as rows the
+  # unique TCR and as column the factors 
+  x <-dataTransformation(pmd$data,pmd$ISrange,pmd$factorRange,pmd$thr,sub,fraction)
+  speciesData2 <- t(x)
+  pmd$speciesData <- speciesData2
+  ## calculation of the richness of species data
+  pmd$shann <- shannon(x)
+  pmd$simpson <- simpson(x)
+  # if chao=FALSE then the richnes is computed without correction
+  if (!chao) {
+    for (i in 1:nrow(speciesData2)) {
+      tem <- 0
+      for (j in 1:ncol(speciesData2)) {
+        if (speciesData2[i,j] > 0) {
+          tem = tem + 1
+        }
+        pmd$richness[i] <- log(tem)
+      }
+    }
+    # if chao=TRUE we use chao as abundance richness estimator
+    # if the number of specie is low is possible that the chao estimator return NaN or Inf
+    # chao estimator simply correct the richness on the basis of the distribution
+    # of single and doubletones: Rich_corr=R_obs+{n_Single^2}\over{2 n_double}
+    ######################################################
+    # In this Playbook Chao correction is not impemented #
+    ######################################################
+  } else {
+    for (i in 1:nrow(speciesData2)) {
+      tem <- 0
+      for (j in 1:ncol(speciesData2)) {
+        if (speciesData2[i,j] > 0) {
+          tem = tem + 1
+        }
+        pmd$richness[i] <- log(tem)
+      }
+    }
+  }
+  ## calculation of eveness of the species
+  abun.vec <- rowSums(speciesData2)
+  maxrow <- apply(speciesData2,1,max)
+  vec.eve <- numeric(0)
+  vec.eve<--log(maxrow/abun.vec)
+
+  ## calcultion of the pmd index of the species
+  pmd.index <- numeric(0)
+  for (i in 1:length(pmd$richness)) {
+    dist <- pmd$richness[i] - vec.eve[i]
+    pmd.sup <- log2(vec.eve[i] / dist)
+    pmd.index <- c(pmd.index,pmd.sup)
+  }
+  pmd$pmd <- pmd.index
+  pmd$eveness <- vec.eve
+  ## Creation of Matrix
+  eulerMat <-
+    matrix(
+      c(pmd$richness,pmd$shann,pmd$simpson,pmd$eveness,pmd$pmd), nrow = nrow(speciesData2), ncol = 5,dimnames =
+        list(
+          row.names(speciesData2), c("Richness","Shannon","Simpson","Evenness","pmdIndex")
+        )
+    )
+  if (noNaN) {
+    # removal of NaN and Inf Value 
+    eulerMat <- eulerMat[!rowSums(!is.finite(eulerMat)),]
+    # removal of row having richness less than adjusted threshold 
+    eulerMat <- eulerMat[eulerMat[,1] > threshold,]
+  }
+  ## removal of row having richness less than adjusted threshold
+  pmd$eulerMat <- data.frame(eulerMat)
+  return(pmd)
+}
+
+pmdscatterplot <-
+function(pmdres,nameofplot="",labelling=T,labelsize=4,spotRadius=4,autoScale=TRUE,x_max=10,y_max=10,onScreen=T){
+  t1<-theme(
+      plot.background = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(size=.4)
+    )
+    x<-as.data.frame(pmdres)
+    pmd_Index<-x[,5]
+
+
+  d <- qplot(x[,1], x[,4], data=x,
+               colour="gray",
+               #colour= pmd_Index,
+               xlab="Richness",
+               ylab="Evenness",
+               main=nameofplot)
+  if (autoScale==TRUE) {
+    x_max=max(x[,1])
+    y_max=max(x[,1])
+  }
+  
+  if(labelling==TRUE){
+    d<-d+geom_point(size=spotRadius)+t1+
+    geom_abline(slope=0.5,colour="red",linetype=3) + 
+    geom_abline(slope=1,colour="black",linetype=1) + 
+    geom_text_repel(data = x, aes(Richness,Evenness, label = row.names(x)),
+              colour="black", 
+              size=labelsize) + 
+    geom_abline(slope=0,colour="black",linetype=1) + 
+    ylim(0,y_max) + 
+    xlim(0,x_max) +theme(legend.position="none")
+    if(onScreen) d
+    return(d)
+  }
+  else{
+    d<-d+geom_point(size=spotRadius)+t1+
+    geom_abline(slope=0.5,colour="red",linetype=3) + 
+    geom_abline(slope=1,colour="black",linetype=1) + 
+    geom_abline(slope=0,colour="black",linetype=1) + 
+    ylim(0,y_max) + 
+    xlim(0,x_max)
+    if(onScreen) d
+    return(d)
+  }      
+}
+
+# Add a datapoint (x) to the scatterplot (sc) 
+pmdScatterAddSamples<-function(x,sc,colour="black",labelsize=4,spotRadius=4,label=F) {
+  sc<-sc+geom_point(data=x,aes(Richness,Evenness), size=spotRadius,colour=colour,alpha=0.9)
+  if (label) sc<-sc+geom_text_repel(data=x,aes(Richness,Evenness, label = row.names(expMat[1,])),
+              colour=colour, 
+              size=labelsize)
+  sc
+  return(sc)
+}
+
+#Computation of Shannon entropy
+shannon<-function(x,base=2) {
+  shann<-numeric(ncol(x))
+  for(i in 1:dim(x)[2]) {
+    freq<-prop.table(t(x)[i,])
+    shann[i]<--sum(freq[freq>0]*log(freq[freq>0],base))
+  }
+  return(shann)
+}
+
+#Computation of (inverse) Simpson Index
+simpson<-function(x,index="invsimps") {
+  simpson<-numeric(ncol(x))
+  for(i in 1:dim(x)[2]) {
+    freq<-prop.table(t(x)[i,])
+    if(index=="simpson")
+      simpson[i]<-sum(freq*freq)
+    else
+      simpson[i]<-1/sum(freq*freq)
+  }
+  return(simpson)
+}
+
+
+# Return the error frequency per base in the PCR products
+mutPCR <- function(n,p){
+    x<-seq(1,n)
+    return(sum(choose(n,x)*x*p)/sum(choose(n,x)))
+}
+library(ggplot2)
+library(ggrepel)
+end.rcode-->
+
+<p></p>
+ 
+
+
+
+<p>The clonal analysis on four different RACE-PCR based TCR beta samples in the manuscript *Comparison studies of computational methods for T-cell receptor sequencing data analysis* (Afzal et al.) was performed using an R package based on Polyclonal-Monoclonal Diversity (PMD) definition.<br>
+In the present Rhrml document we embedded the R code sufficient to run the PMD clonal analysis.</p>
+<h3> How to use the report </h3>
+<p>The present notebook is written in Rhtml and can be parsed via <a href="http://yihui.name/knitr/">Knitr</a>. We suggest to use <a href="http://www.rstudio.com/">RStudio</a> to play with this document.<br>
+This code depends on two external packages, <code>ggplot2</code> and <code>ggrepel</code></p>. Consider to install them before to run the notebook.</p>
+<p>Unzip the distribution file in a folder of choice (i.e. <code>~/PMD/</code>) and set in the next chunk the working directory accordingly.</p>
+<code>
+setwd("~/PMD/")<br>
+getwd()<br>
+</code>
+<p>For clarity, most of the chunks are not exported. In order to export the code of a single chunk into the report set the <code>echo</code> parameter to <code>TRUE</code>. </p>
+<h3> Input data format</h3> 
+The input data format has the following fields structure
+<br><br>
+<code>
+head(tab[tab$V5=="miTCR",])<br>
+                                                       V1                V2    V3 V4    V5      V6 V7 V8<br>
+12394    TGTGCCAGCAGTTTCTCGACCTGTTCGGCTAACTATGGCTACACCTTC  CASSFSTCSANYGYTF 10372  - miTCR sample2  1  1     #Jurkat Clone<br>
+12395                TGTGCCAGCAGCCTTGGGACAGATACGCAGTATTTT      CASSLGTDTQYF   538  - miTCR sample2  1  1     #CEM clone<br>
+                                                       V1                V2    V3 V4    V5      V6 V7 V8<br>
+head(tab[tab$V5=="miXCR",])<br>                                                  
+15877    TGTGCCAGCAGTTTCTCGACCTGTTCGGCTAACTATGGCTACACCTTC  CASSFSTCSANYGYTF 10044  - miXCR sample2  1  1     #Jurkat Clone<br>
+15878                TGTGCCAGCAGCCTTGGGACAGATACGCAGTATTTT      CASSLGTDTQYF   533  - miXCR sample2  1  1     #CEM clone<br>
+</code>
+<br><br>
+<p>The first column represents the "primary key" of the data. This column is different for each row. The third column must contains the reads count. All the other columns contain metadata information about the clone. We will use column 5 (analysis tool) as annotation label for the analysis. Each sample is provided as a separate table.</p>
+
+<!--begin.rcode echo=FALSE
+setwd("~/ownCloud/MacPro/workspace/Papers/TCR_comp/BriefResub/")
+
+getwd()
+#expMat<-t(matrix(c(0,	0,	0,	0,	0,8.220065429,	0,	0,	1.73,	-1.273669046,8.647783,	0,	0,	3.9,	-0.796326434, 8.668074571,	0,	0,	3.9,	-0.798670134,0,	0,	0,	0,	0,8.220065429,	0,	0,	0.730856371,	-2.42011649,8.647783,	0,	0,	2.029990429,	-1.449271909,8.668074571,	0,	0,	3.845756429,	-0.812676373),nrow=5,ncol=8))
+# expMat<-t(matrix(c(7.972429,	0,	0,	1.73,	-2.42011649,8.310882,	0,	0,	4.15,	-1.449271909,8.187329,	0,	0,	3.93,	-0.812676373,8.284503,	0,	0,	3.79,	-0.812676373),nrow=5,ncol=4))
+expMat<-t(matrix(c(0,	0,	0,	0,	-2.42011649,
+                   8.39,	0,	0,	2.3,	-1.449271909,
+                   8.49,	0,	0,	3.91,	-0.812676373,
+                   8.5,	0,	0,	3.91,	-0.812676373),nrow=5,ncol=4))
+
+#rownames(expMat)<-c("S1","S2","S3","S4","S1av","S2av","S3av","S4av")
+colnames(expMat)<-c("Richness"  ,"Shannon",   "invSimpson", "Evenness" , "pmdIndex")
+expMat<-as.data.frame(expMat)
+
+### First sample
+# Read the datatable
+# tab<-read.table("./Data/RP_S1_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S1_allTools.default.forPMD.final.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/S1.txt",header=F)
+# tab<-read.table("./Data/S1.txt",header=F)
+# Aggreate TCR sequeces per samples definition ($5=Analysis Tool)
+res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+# EulerMat contains 5 different diversity values (columns) for each experimental point (tools, rows)
+res$eulerMat
+# Add the expected clonality values into the clonal plane
+d<-pmdScatterAddSamples(expMat[c(1),],d)
+#d<-d+geom_abline(slope=0,intercept=expMat[1,4],colour="gray",linetype=3)
+d<-d+geom_abline(slope=0,intercept=expMat[1,4],colour="gray",linetype=3)+geom_vline(xintercept=expMat[1,1],colour="gray",linetype=3)
+d
+### Second sample
+# tab<-read.table("./Data/RP_S2_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S2_allTools.default.forPMD.final.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/S2.txt",header=F)
+#tab<-read.table("./Data/S2.txt",header=F)
+res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+res$eulerMat
+d<-pmdScatterAddSamples(expMat[c(2),],d)
+# d<-d+geom_abline(slope=0,intercept=expMat[2,4],colour="gray",linetype=3)
+d<-d+geom_abline(slope=0,intercept=expMat[2,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[2,1],colour="gray",linetype=3)
+d
+### Third sample
+# tab<-read.table("./Data/RP_S3_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S3_allTools.default.forPMD.final.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/S3.txt",header=F)
+# tab<-read.table("./Data/S3.txt",header=F)
+res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+res$eulerMat
+d<-pmdScatterAddSamples(expMat[c(3),],d,)
+d<-d+geom_abline(slope=0,intercept=expMat[3,4],colour="gray",linetype=3)
+d<-d+geom_abline(slope=0,intercept=expMat[3,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[3,1],colour="gray",linetype=3)
+d
+### Fourth sample
+# tab<-read.table("./Data/RP_S4_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S4_allTools.default.forPMD.final.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/S4.txt",header=F)
+# tab<-read.table("./Data/S4.txt",header=F)
+res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+res$eulerMat
+d<-pmdScatterAddSamples(expMat[c(4),],d)
+# d<-d+geom_abline(slope=0,intercept=expMat[4,4],colour="gray",linetype=3)
+d<-d+geom_abline(slope=0,intercept=expMat[4,4],colour="gray",linetype=3)+geom_vline(xintercept=expMat[4,1],colour="gray",linetype=3)
+d
+end.rcode-->
+
+<h3> License </h3>
+<code>
+This notebook is free software: you can redistribute it and/or modify<br>
+it under the terms of the GNU General Public License as published by<br>
+the Free Software Foundation, either version 3 of the License, or<br>
+(at your option) any later version.<br>
+<br>
+This program is distributed in the hope that it will be useful,<br>
+but WITHOUT ANY WARRANTY; without even the implied warranty of<br>
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the<br>
+GNU General Public License for more details.<br>
+<br>
+You should have received a copy of the GNU General Public License<br>
+along with this program.  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>.
+<code>
+</body>
+</html>
