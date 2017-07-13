@@ -82,9 +82,9 @@ function(data,ISrange=c(1,2,4),factorRange=c(12,13,14),thr=3,threshold = 1.1,noN
     # if the number of specie is low is possible that the chao estimator return NaN or Inf
     # chao estimator simply correct the richness on the basis of the distribution
     # of single and doubletones: Rich_corr=R_obs+{n_Single^2}\over{2 n_double}
-    ######################################################
-    # In this Playbook Chao correction is not impemented #
-    ######################################################
+    #######################################################
+    # In this Playbook Chao correction is not implemented #
+    #######################################################
   } else {
     for (i in 1:nrow(speciesData2)) {
       tem <- 0
@@ -257,14 +257,22 @@ head(tab[tab$V5=="miXCR",])<br>
 
 <!--begin.rcode echo=FALSE
 setwd("~/ownCloud/MacPro/workspace/Papers/TCR_comp/BriefResub/")
-
 getwd()
-#expMat<-t(matrix(c(0,	0,	0,	0,	0,8.220065429,	0,	0,	1.73,	-1.273669046,8.647783,	0,	0,	3.9,	-0.796326434, 8.668074571,	0,	0,	3.9,	-0.798670134,0,	0,	0,	0,	0,8.220065429,	0,	0,	0.730856371,	-2.42011649,8.647783,	0,	0,	2.029990429,	-1.449271909,8.668074571,	0,	0,	3.845756429,	-0.812676373),nrow=5,ncol=8))
-# expMat<-t(matrix(c(7.972429,	0,	0,	1.73,	-2.42011649,8.310882,	0,	0,	4.15,	-1.449271909,8.187329,	0,	0,	3.93,	-0.812676373,8.284503,	0,	0,	3.79,	-0.812676373),nrow=5,ncol=4))
+
+# Expected values in the synthetic dataset
 expMat<-t(matrix(c(0,	0,	0,	0,	-2.42011649,
                    8.39,	0,	0,	2.3,	-1.449271909,
                    8.49,	0,	0,	3.91,	-0.812676373,
-                   8.5,	0,	0,	3.91,	-0.812676373),nrow=5,ncol=4))
+                   8.5,	0,	0,	3.91,	-0.812676373),
+                 nrow=5,ncol=4))
+
+# Expected values in the experimental dataset
+#expMat<-t(matrix(c(7.972429,	0,	0,	1.73,	-2.42011649,
+#                   8.310882,	0,	0,	4.15,	-1.449271909,
+#                   8.187329,	0,	0,	3.93,	-0.812676373,
+#                   8.284503,	0,	0,	3.79,	-0.812676373),
+#                 nrow=5,ncol=4))
+
 
 #rownames(expMat)<-c("S1","S2","S3","S4","S1av","S2av","S3av","S4av")
 colnames(expMat)<-c("Richness"  ,"Shannon",   "invSimpson", "Evenness" , "pmdIndex")
@@ -272,25 +280,29 @@ expMat<-as.data.frame(expMat)
 
 ### First sample
 # Read the datatable
-# tab<-read.table("./Data/RP_S1_allTools.default.forPMD.final.txt",header=F)
-# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S1_allTools.default.forPMD.final.txt",header=F)
-tab<-read.table("./Data/forPMD.rev1.insilico/S1.txt",header=F)
-# tab<-read.table("./Data/S1.txt",header=F)
+# Synthetic
+tab<-read.table("./Data/forPMD.rev1.insilico/RP_S1_allTools.default.forPMD.final.txt",header=F)
+# Experimental
+# tab<-read.table("./Data/forPMD.rev1/RP_S1_allTools.default.forPMD.final.txt",header=F)
+
 # Aggreate TCR sequeces per samples definition ($5=Analysis Tool)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+
 # EulerMat contains 5 different diversity values (columns) for each experimental point (tools, rows)
 res$eulerMat
+
 # Add the expected clonality values into the clonal plane
 d<-pmdScatterAddSamples(expMat[c(1),],d)
-#d<-d+geom_abline(slope=0,intercept=expMat[1,4],colour="gray",linetype=3)
+# plot the gray line for the richness (vertical) and the evenness(orizontal)
 d<-d+geom_abline(slope=0,intercept=expMat[1,4],colour="gray",linetype=3)+geom_vline(xintercept=expMat[1,1],colour="gray",linetype=3)
+# plot the gray line for the evenness (orizontal)
+#d<-d+geom_abline(slope=0,intercept=expMat[1,4],colour="gray",linetype=3)
 d
+
 ### Second sample
-# tab<-read.table("./Data/RP_S2_allTools.default.forPMD.final.txt",header=F)
-# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S2_allTools.default.forPMD.final.txt",header=F)
-tab<-read.table("./Data/forPMD.rev1.insilico/S2.txt",header=F)
-#tab<-read.table("./Data/S2.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/RP_S2_allTools.default.forPMD.final.txt",header=F)
+#tab<-read.table("./Data/forPMD.rev1/RP_S2_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 res$eulerMat
@@ -299,10 +311,8 @@ d<-pmdScatterAddSamples(expMat[c(2),],d)
 d<-d+geom_abline(slope=0,intercept=expMat[2,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[2,1],colour="gray",linetype=3)
 d
 ### Third sample
-# tab<-read.table("./Data/RP_S3_allTools.default.forPMD.final.txt",header=F)
-# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S3_allTools.default.forPMD.final.txt",header=F)
-tab<-read.table("./Data/forPMD.rev1.insilico/S3.txt",header=F)
-# tab<-read.table("./Data/S3.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/RP_S3_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1/RP_S3_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 res$eulerMat
@@ -311,10 +321,8 @@ d<-d+geom_abline(slope=0,intercept=expMat[3,4],colour="gray",linetype=3)
 d<-d+geom_abline(slope=0,intercept=expMat[3,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[3,1],colour="gray",linetype=3)
 d
 ### Fourth sample
-# tab<-read.table("./Data/RP_S4_allTools.default.forPMD.final.txt",header=F)
-# tab<-read.table("./Data/forPMD.rev1.insilico/RP_S4_allTools.default.forPMD.final.txt",header=F)
-tab<-read.table("./Data/forPMD.rev1.insilico/S4.txt",header=F)
-# tab<-read.table("./Data/S4.txt",header=F)
+tab<-read.table("./Data/forPMD.rev1.insilico/RP_S4_allTools.default.forPMD.final.txt",header=F)
+# tab<-read.table("./Data/forPMD.rev1/RP_S4_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 res$eulerMat
