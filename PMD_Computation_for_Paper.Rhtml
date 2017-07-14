@@ -219,6 +219,8 @@ mutPCR <- function(n,p){
     x<-seq(1,n)
     return(sum(choose(n,x)*x*p)/sum(choose(n,x)))
 }
+
+
 library(ggplot2)
 library(ggrepel)
 end.rcode-->
@@ -274,6 +276,8 @@ expMat<-t(matrix(c(0,	0,	0,	0,	-2.42011649,
 #                 nrow=5,ncol=4))
 
 
+# Load the correction values for the evenness
+corrFac<-read.table("./Data/CorrFact.txt",header=F,sep="\t")
 #rownames(expMat)<-c("S1","S2","S3","S4","S1av","S2av","S3av","S4av")
 colnames(expMat)<-c("Richness"  ,"Shannon",   "invSimpson", "Evenness" , "pmdIndex")
 expMat<-as.data.frame(expMat)
@@ -304,8 +308,11 @@ d
 tab<-read.table("./Data/forPMD.rev1.insilico/RP_S2_allTools.default.forPMD.final.txt",header=F)
 #tab<-read.table("./Data/forPMD.rev1/RP_S2_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
-d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+
+# Correct the Evenness for the misformed clones.
+res$eulerMat$Evenness<--log((1/exp(res$eulerMat$Evenness))/corrFac$V3)
 res$eulerMat
+d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 d<-pmdScatterAddSamples(expMat[c(2),],d)
 # d<-d+geom_abline(slope=0,intercept=expMat[2,4],colour="gray",linetype=3)
 d<-d+geom_abline(slope=0,intercept=expMat[2,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[2,1],colour="gray",linetype=3)
@@ -314,6 +321,7 @@ d
 tab<-read.table("./Data/forPMD.rev1.insilico/RP_S3_allTools.default.forPMD.final.txt",header=F)
 # tab<-read.table("./Data/forPMD.rev1/RP_S3_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+res$eulerMat$Evenness<--log((1/exp(res$eulerMat$Evenness))/corrFac$V4)
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 res$eulerMat
 d<-pmdScatterAddSamples(expMat[c(3),],d,)
@@ -324,6 +332,7 @@ d
 tab<-read.table("./Data/forPMD.rev1.insilico/RP_S4_allTools.default.forPMD.final.txt",header=F)
 # tab<-read.table("./Data/forPMD.rev1/RP_S4_allTools.default.forPMD.final.txt",header=F)
 res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
+res$eulerMat$Evenness<--log((1/exp(res$eulerMat$Evenness))/corrFac$V4)
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
 res$eulerMat
 d<-pmdScatterAddSamples(expMat[c(4),],d)
