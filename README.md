@@ -1,6 +1,6 @@
 # Installation
-In the present Rhtml document we embedded the R code sufficient to run the PMD clonal analysis on the four experimental samples described in the manuscript.
-Unzip the distribution file in a folder of choice (i.e. `~/PMD/`) and set in the next chunk the working directory accordingly.
+In the present Rhtml document, we embedded the R code sufficient to run the PMD clonal analysis on the four experimental samples described in the manuscript.
+Unzip the distribution file into a folder of choice (i.e. `~/PMD/`) and set the working directory accordingly.
 ```R
 setwd("~/PMD/")
 getwd()
@@ -8,7 +8,12 @@ getwd()
 
 This code depends on two external packages, `ggplot2` and `ggrepel`. Consider to install them before to run the notebook.
 
-The notebook is written in Rhtml and can be parsed via [Knitr](http://yihui.name/knitr/). We suggest to use [RStudio](http://www.rstudio.com/) to play with the document.
+The notebook is written in Rhtml and can be parsed via [Knitr](http://yihui.name/knitr/). We suggest using [RStudio](http://www.rstudio.com/) to play with the document.
+# Usage
+This version contains the instructions to use it as an R notebook.
+
+## Input files
+The input data format has the following fields structure
 # Usage
 This version contains the instructions to use it as an R notebook.
 
@@ -22,16 +27,16 @@ TGTGCCAGCAGCCTTGGGACAGATACGCAGTATTTT   |   CASSLGTDTQYF  | 538 | - | miTCR | sam
 
 All the input files are in the folder `./Data/forPMD.rev1.insilico/` and `./Data/forPMD.rev1/`.
 
-The combination of the first two columns represent the *primary key* of the data. This combination is different for each row. The third column must contain the reads count. All the other columns contain metadata information about the clone. We will use column 5 (analysis tool) as annotation label for the analysis. Each sample is provided as a separate table.
+The combination of the first two columns represents the *primary key* of the data. This combination is different for each row. The third column must contain the reads count. All the other columns contain metadata information about the clone. We will use column 5 (analysis tool) as annotation label for the analysis. Each sample is provided as a separate table.
 
 ## Expected values
 The expected values (richness and evenness) are displayed as balck dot in the clonal plane. The next few lines of code define the expectev values for four samples with coordinates: (0,0), (8.39,2.3) , (8.49,3.91), and (8.5,3.91). Modify in accordance with your expected values
 ```
 # Expected values in the synthetic dataset
-expMat<-t(matrix(c(0,	0,	0,	0,	0,
-                   8.39,	0,	0,	2.3,	0,
-                   8.49,	0,	0,	3.91,	0,
-                   8.5,	0,	0,	3.91,	),
+expMat<-t(matrix(c(0,    0,    0,    0,    0,
+                   8.39,    0,    0,    2.3,    0,
+                   8.49,    0,    0,    3.91,    0,
+                   8.5,    0,    0,    3.91,    ),
                  nrow=5,ncol=4))
 ```
 ## Correction values
@@ -81,5 +86,4 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License<
-along with this program.  If not, see [http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
+You should have received a copy of the GNU General Public License along with this program.  If not, see [http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
