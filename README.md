@@ -9,11 +9,7 @@ getwd()
 This code depends on two external packages, `ggplot2` and `ggrepel`. Consider to install them before to run the notebook.
 
 The notebook is written in Rhtml and can be parsed via [Knitr](http://yihui.name/knitr/). We suggest using [RStudio](http://www.rstudio.com/) to play with the document.
-# Usage
-This version contains the instructions to use it as an R notebook.
 
-## Input files
-The input data format has the following fields structure
 # Usage
 This version contains the instructions to use it as an R notebook.
 
