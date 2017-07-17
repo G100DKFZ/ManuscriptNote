@@ -314,6 +314,7 @@ res<-pmd(tab,ISrange=c(1,2),factorRange = c(5))
 #res$eulerMat$Evenness<--log((1/exp(res$eulerMat$Evenness))/corrFac$V3)
 res$eulerMat
 d<-pmdscatterplot(res$eulerMat, labelsize=4,spotRadius=4)
+
 #d<-pmdScatterAddSamples(expMat[c(2),],d)
  d<-d+geom_abline(slope=0,intercept=expMat[2,4],colour="gray",linetype=3)
 # d<-d+geom_abline(slope=0,intercept=expMat[2,4,],colour="gray",linetype=3)+geom_vline(xintercept=expMat[2,1],colour="gray",linetype=3)
